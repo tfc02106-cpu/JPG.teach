@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Interactive Quantization and Quality</title>
+<link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&amp;family=Roboto:wght@300;400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet"/>
+<style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #f3f4f6;
+            font-family: 'Roboto', 'Noto Sans TC', sans-serif;
+            overflow: hidden;
+        }
+        .slide-container {
+            width: 1280px;
+            height: 720px;
+            display: flex;
+            flex-direction: column;
+            background-color: white;
+            position: relative;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        /* Academic Colors */
+        .bg-academic-blue { background-color: #1a3a52; }
+        .text-academic-blue { color: #1a3a52; }
+        .bg-academic-orange { background-color: #e67e22; }
+        .text-academic-orange { color: #e67e22; }
+        .border-academic-orange { border-color: #e67e22; }
+        
+        .header-height { height: 80px; }
+        .footer-height { height: 40px; }
+        .content-height { height: 600px; }
+
+        /* Custom Slider Styling */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 24px;
+            width: 24px;
+            border-radius: 50%;
+            background: #e67e22;
+            cursor: pointer;
+            margin-top: -10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: #e5e7eb;
+            border-radius: 2px;
+        }
+
+        /* Matrix Grid Styling */
+        .matrix-grid {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 1px;
+            background-color: #cbd5e1;
+            border: 1px solid #94a3b8;
+            width: 100%;
+            aspect-ratio: 1;
+        }
+        .matrix-cell {
+            background-color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-family: monospace;
+            color: #334155;
+            transition: background-color 0.2s;
+        }
+
+        /* Comparison Slider */
+        .comparison-container {
+            position: relative;
+            width: 100%;
+            height: 320px;
+            overflow: hidden;
+            border: 2px solid #e2e8f0;
+            border-radius: 0.5rem;
+            cursor: col-resize;
+        }
+        .comparison-image {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .comparison-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 50%; /* Initial split */
+            height: 100%;
+            overflow: hidden;
+            border-right: 2px solid white;
+            box-shadow: 2px 0 4px rgba(0,0,0,0.2);
+            background-color: white; /* fallback */
+        }
+        .comparison-label {
+            position: absolute;
+            bottom: 10px;
+            padding: 4px 8px;
+            background: rgba(0,0,0,0.6);
+            color: white;
+            font-size: 12px;
+            border-radius: 4px;
+            pointer-events: none;
+        }
+        .label-left { left: 10px; }
+        .label-right { right: 10px; }
+    </style>
+</head>
+<body>
+<div class="slide-container">
+<!-- Header Section -->
+<div class="header-height bg-academic-blue flex items-center px-8 justify-between relative z-10">
+<div class="flex items-center">
+<div class="w-2 h-12 bg-academic-orange mr-4"></div>
+<div>
+<p class="text-blue-200 text-xs font-bold tracking-widest uppercase mb-1">Section 2.3.3: Compression</p>
+<h2 class="text-white text-3xl font-bold">Interactive Quantization &amp; Quality Factor</h2>
+</div>
+</div>
+<div class="text-white opacity-80">
+<i class="fas fa-sliders-h text-2xl"></i>
+</div>
+</div>
+<!-- Main Content -->
+<div class="content-height flex px-8 py-4 space-x-6">
+<!-- Left Column: Controls & Matrix (40%) -->
+<div class="w-2/5 flex flex-col space-y-4">
+<!-- Control Panel -->
+<div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+<div class="flex justify-between items-center mb-2">
+<label class="text-academic-blue font-bold">JPEG Quality (Q)</label>
+<span class="text-3xl font-bold text-academic-orange" id="qualityDisplay">50</span>
+</div>
+<input id="qualitySlider" max="100" min="1" step="1" type="range" value="50"/>
+<div class="flex justify-between text-xs text-gray-500 mt-1">
+<span>1 (Max Compression)</span>
+<span>100 (Max Quality)</span>
+</div>
+</div>
+<!-- Theory Box -->
+<div class="bg-blue-50 p-4 rounded-lg border-l-4 border-academic-blue text-sm">
+<p class="text-gray-700">
+<strong>Logic:</strong> The slider adjusts scaling factor $S$. <br/>
+                        $Q_{table}(u,v) = \text{Standard}(u,v) \times S$.<br/>
+                        Low Q $\rightarrow$ High Scale $\rightarrow$ Large Divisors $\rightarrow$ More Zeros.
+                    </p>
+</div>
+<!-- Matrix Visualization -->
+<div class="flex-1 flex flex-col">
+<p class="text-xs font-bold text-gray-500 uppercase mb-1">Live Luminance Quantization Matrix</p>
+<div class="flex-1 relative">
+<div class="matrix-grid" id="matrixGrid">
+<!-- JS will populate -->
+</div>
+</div>
+<p class="text-xs text-gray-400 mt-1 text-right italic">Values &gt; 255 are clamped</p>
+</div>
+</div>
+<!-- Right Column: Visuals & Metrics (60%) -->
+<div class="w-3/5 flex flex-col space-y-4">
+<!-- Metrics Panel -->
+<div class="grid grid-cols-3 gap-4">
+<div class="bg-gray-50 p-3 rounded border border-gray-200 text-center">
+<p class="text-xs text-gray-500 uppercase">File Size</p>
+<p class="text-xl font-bold text-gray-800" id="fileSizeDisplay">-- KB</p>
+</div>
+<div class="bg-gray-50 p-3 rounded border border-gray-200 text-center">
+<p class="text-xs text-gray-500 uppercase">Compression Ratio</p>
+<p class="text-xl font-bold text-academic-orange" id="ratioDisplay">-- : 1</p>
+</div>
+<div class="bg-gray-50 p-3 rounded border border-gray-200 text-center">
+<p class="text-xs text-gray-500 uppercase">PSNR (Quality)</p>
+<p class="text-xl font-bold text-academic-blue" id="psnrDisplay">-- dB</p>
+</div>
+</div>
+<!-- Comparison Viewer -->
+<div class="flex-1 flex flex-col bg-white border border-gray-200 rounded-lg p-1">
+<div class="comparison-container" id="comparisonContainer">
+<!-- Compressed (Background) -->
+<img alt="Compressed" class="comparison-image" id="compressedImg"/>
+<!-- Original (Overlay) -->
+<div class="comparison-overlay" id="overlayDiv">
+<canvas class="comparison-image" height="320" id="originalCanvas" width="600"></canvas>
+</div>
+<!-- Labels -->
+<div class="comparison-label label-left">Original</div>
+<div class="comparison-label label-right">Compressed</div>
+<!-- Slider Handle Visual -->
+<div class="absolute top-0 bottom-0 w-1 bg-white cursor-col-resize shadow-lg" id="sliderHandle" style="left: 50%;">
+<div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-8 h-8 bg-academic-orange rounded-full flex items-center justify-center shadow-md border-2 border-white">
+<i class="fas fa-arrows-alt-h text-white text-sm"></i>
+</div>
+</div>
+</div>
+<p class="text-xs text-center text-gray-400 mt-2">
+<i class="fas fa-mouse-pointer mr-1"></i> Drag horizontally to compare Original vs. Compressed
+                    </p>
+</div>
+<!-- Artifact Explanation -->
+<div class="bg-orange-50 p-3 rounded border border-orange-100 flex items-start space-x-3">
+<i class="fas fa-search text-academic-orange mt-1"></i>
+<div>
+<p class="text-sm font-bold text-gray-800">What to look for?</p>
+<p class="text-xs text-gray-600">
+                            At <strong>Low Quality (Q &lt; 20)</strong>: Look for "blocking artifacts" (8x8 squares) in smooth gradients and "ringing" around text edges. <br/>
+                            At <strong>High Quality (Q &gt; 80)</strong>: Artifacts disappear, but file size increases exponentially.
+                        </p>
+</div>
+</div>
+</div>
+</div>
+<!-- Footer -->
+<div class="footer-height bg-gray-100 border-t border-gray-200 flex items-center justify-between px-8 text-gray-500 text-sm">
+<p><i class="fas fa-book mr-2"></i>Szeliski - Computer Vision, 2nd Ed.</p>
+<div class="flex items-center">
+<p class="mr-4">Section 2.3.3</p>
+<div class="bg-academic-blue text-white px-2 py-1 rounded text-xs font-bold">28</div>
+</div>
+</div>
+</div>
+<script>
+        // Standard JPEG Luminance Quantization Table
+        const stdLumaTable = [
+            16, 11, 10, 16, 24, 40, 51, 61,
+            12, 12, 14, 19, 26, 58, 60, 55,
+            14, 13, 16, 24, 40, 57, 69, 56,
+            14, 17, 22, 29, 51, 87, 80, 62,
+            18, 22, 37, 56, 68, 109, 103, 77,
+            24, 35, 55, 64, 81, 104, 113, 92,
+            49, 64, 78, 87, 103, 121, 120, 101,
+            72, 92, 95, 98, 112, 100, 103, 99
+        ];
+
+        // Elements
+        const slider = document.getElementById('qualitySlider');
+        const qualityDisplay = document.getElementById('qualityDisplay');
+        const matrixGrid = document.getElementById('matrixGrid');
+        const originalCanvas = document.getElementById('originalCanvas');
+        const compressedImg = document.getElementById('compressedImg');
+        const fileSizeDisplay = document.getElementById('fileSizeDisplay');
+        const ratioDisplay = document.getElementById('ratioDisplay');
+        const psnrDisplay = document.getElementById('psnrDisplay');
+        const comparisonContainer = document.getElementById('comparisonContainer');
+        const overlayDiv = document.getElementById('overlayDiv');
+        const sliderHandle = document.getElementById('sliderHandle');
+
+        // Draw Synthetic Image
+        const ctx = originalCanvas.getContext('2d');
+        const width = originalCanvas.width;
+        const height = originalCanvas.height;
+
+        function drawTestImage() {
+            // Gradient Background (Smoothness test for banding)
+            const grd = ctx.createLinearGradient(0, 0, width, height);
+            grd.addColorStop(0, "#1a3a52");
+            grd.addColorStop(1, "#e67e22");
+            ctx.fillStyle = grd;
+            ctx.fillRect(0, 0, width, height);
+
+            // Sharp Text (Ringing test)
+            ctx.fillStyle = "white";
+            ctx.font = "bold 80px Arial";
+            ctx.fillText("JPEG", 50, 120);
+            ctx.font = "bold 40px Arial";
+            ctx.fillText("Artifacts", 50, 170);
+
+            // High Frequency Patterns (Blocking test)
+            ctx.beginPath();
+            ctx.strokeStyle = "rgba(255,255,255,0.8)";
+            ctx.lineWidth = 2;
+            for(let i=0; i<width; i+=10) {
+                ctx.moveTo(i, 200);
+                ctx.lineTo(i+5, 300);
+            }
+            ctx.stroke();
+
+            // Circles
+            ctx.fillStyle = "#ff4757";
+            ctx.beginPath();
+            ctx.arc(450, 150, 60, 0, 2*Math.PI);
+            ctx.fill();
+        }
+
+        // Logic
+        function updateMatrix(quality) {
+            let scale;
+            if (quality < 50) {
+                scale = 5000 / quality;
+            } else {
+                scale = 200 - 2 * quality;
+            }
+
+            matrixGrid.innerHTML = '';
+            stdLumaTable.forEach(val => {
+                let qVal = Math.floor((val * scale + 50) / 100);
+                if (qVal < 1) qVal = 1;
+                if (qVal > 255) qVal = 255;
+
+                const cell = document.createElement('div');
+                cell.className = 'matrix-cell';
+                cell.textContent = qVal;
+                
+                // Heatmap coloring
+                // Low value (fine detail kept) -> White/Blue
+                // High value (coarse quant) -> Orange/Dark
+                const intensity = Math.min(qVal / 100, 1); 
+                // Simple visualization logic: 
+                // qVal <= 10: white
+                // qVal >= 100: dark orange
+                if(qVal > 50) {
+                    cell.style.backgroundColor = `rgba(230, 126, 34, ${intensity * 0.8})`;
+                    cell.style.color = qVal > 100 ? 'white' : 'black';
+                } else {
+                    cell.style.backgroundColor = `rgba(26, 58, 82, ${intensity * 0.3})`;
+                }
+                
+                matrixGrid.appendChild(cell);
+            });
+        }
+
+        function calculatePSNR(originalData, compressedData) {
+            let mse = 0;
+            for (let i = 0; i < originalData.length; i += 4) {
+                // Luminance only approximation or RGB average
+                let diffR = originalData[i] - compressedData[i];
+                let diffG = originalData[i+1] - compressedData[i+1];
+                let diffB = originalData[i+2] - compressedData[i+2];
+                mse += (diffR*diffR + diffG*diffG + diffB*diffB);
+            }
+            mse /= (originalData.length / 4 * 3); // Average over pixels and channels
+            
+            if (mse === 0) return Infinity;
+            return 10 * Math.log10((255 * 255) / mse);
+        }
+
+        function updateCompression() {
+            const quality = parseInt(slider.value);
+            qualityDisplay.textContent = quality;
+            updateMatrix(quality);
+
+            // Compress
+            // Note: quality parameter is 0.0 - 1.0
+            const dataUrl = originalCanvas.toDataURL('image/jpeg', quality / 100);
+            compressedImg.src = dataUrl;
+
+            // Metrics
+            // Base64 overhead is approx 1.33x. Formula: (length * 3/4) / 1024
+            const head = 'data:image/jpeg;base64,';
+            const sizeBytes = Math.round((dataUrl.length - head.length) * 3 / 4);
+            const sizeKB = (sizeBytes / 1024).toFixed(1);
+            fileSizeDisplay.textContent = sizeKB + ' KB';
+
+            // Original size (raw bitmap): 600 * 320 * 3 bytes (RGB) approx 562KB
+            // For BMP estimation:
+            const origSizeKB = (width * height * 3) / 1024;
+            const ratio = (origSizeKB / (sizeBytes/1024)).toFixed(1);
+            ratioDisplay.textContent = ratio + " : 1";
+
+            // PSNR (Need to read pixels back from compressed image)
+            // Since image loading is async, we do it onload of image element? 
+            // Actually comparison happens visually instantly, we can compute PSNR in a slightly detached way or use a temp canvas
+            
+            // Create a temp image object to read pixel data for PSNR
+            const tempImg = new Image();
+            tempImg.onload = function() {
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = width;
+                tempCanvas.height = height;
+                const tempCtx = tempCanvas.getContext('2d');
+                tempCtx.drawImage(tempImg, 0, 0);
+                
+                const originalData = ctx.getImageData(0, 0, width, height).data;
+                const compressedData = tempCtx.getImageData(0, 0, width, height).data;
+                
+                const psnr = calculatePSNR(originalData, compressedData);
+                psnrDisplay.textContent = psnr === Infinity ? "∞" : psnr.toFixed(2) + " dB";
+            };
+            tempImg.src = dataUrl;
+        }
+
+        // Comparison Slider Logic
+        let isDragging = false;
+        comparisonContainer.addEventListener('mousedown', () => isDragging = true);
+        window.addEventListener('mouseup', () => isDragging = false);
+        comparisonContainer.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            const rect = comparisonContainer.getBoundingClientRect();
+            let x = e.clientX - rect.left;
+            x = Math.max(0, Math.min(x, rect.width));
+            
+            const percent = (x / rect.width) * 100;
+            overlayDiv.style.width = percent + '%';
+            sliderHandle.style.left = percent + '%';
+        });
+
+        // Initialize
+        drawTestImage();
+        slider.addEventListener('input', updateCompression);
+        // Initial call
+        updateCompression();
+
+    </script>
+</body>
+</html>
